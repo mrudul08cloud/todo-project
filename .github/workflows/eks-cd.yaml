@@ -1,0 +1,78 @@
+name: EKS Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: three-tier
+  AWS_ROLE_ARN: arn:aws:iam::323001028681:role/Saransh-EKS-OIDC
+  NAMESPACE: three-tier
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # ---------------- CHECKOUT ----------------
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # ---------------- AUTH (OIDC) ----------------
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ env.AWS_ROLE_ARN }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    # ---------------- KUBECONFIG ----------------
+    - name: Configure kubeconfig
+      run: |
+        aws eks update-kubeconfig \
+          --region $AWS_REGION \
+          --name $EKS_CLUSTER_NAME
+
+    # ---------------- NAMESPACE ----------------
+    - name: Ensure namespace exists
+      run: |
+        kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+
+    # ---------------- DATABASE (SECRETS FLOW) ----------------
+    - name: Deploy MongoDB prerequisites
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/serviceaccount.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/secretstore.yaml --validate=false
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
+
+    # ---------------- DATABASE ----------------
+    - name: Deploy MongoDB
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/pvc.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/deployment.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/service.yaml
+
+    # ---------------- BACKEND ----------------
+    - name: Deploy Backend
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/deployment.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/service.yaml
+
+    # ---------------- FRONTEND ----------------
+    - name: Deploy Frontend
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/deployment.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/service.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/ingress.yaml
+
+    # ---------------- VERIFY ----------------
+    - name: Verify resources
+      run: |
+        kubectl get pods -n $NAMESPACE
+        kubectl get svc -n $NAMESPACE
+        kubectl get ingress -n $NAMESPACE
