@@ -3,9 +3,6 @@ kind: Deployment
 metadata:
   name: api
   namespace: three-tier
-  labels:
-    role: api
-    env: demo
 spec:
   replicas: 2
   selector:
@@ -25,15 +22,3 @@ spec:
             value: mongodb://admin:admin123@mongodb-svc:27017/todo?authSource=admin
         ports:
           - containerPort: 3500
-        livenessProbe:
-          httpGet:
-            path: /ok
-            port: 3500
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ok
-            port: 3500
-          initialDelaySeconds: 10
-          periodSeconds: 10
