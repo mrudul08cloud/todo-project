@@ -1,65 +1,91 @@
-# name: EKS Pipeline
+name: EKS Pipeline
 
-# on:
-#   push:
-#     branches:
-#       - main
+on:
+  push:
+    branches:
+      - main
 
-# env:
-#   AWS_REGION: ap-south-1
-#   EKS_CLUSTER_NAME: my-cluster
-#   NAMESPACE: three-tier
+env:
+  AWS_REGION: ap-south-1
+  EKS_CLUSTER_NAME: my-cluster
+  NAMESPACE: three-tier
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-#     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v4
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-#     - name: Configure AWS credentials
-#       uses: aws-actions/configure-aws-credentials@v4
-#       with:
-#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#         aws-region: ${{ env.AWS_REGION }}
+    # ---------- AWS AUTH ----------
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
-#     - name: Update kubeconfig
-#       run: |
-#         aws eks update-kubeconfig \
-#           --region $AWS_REGION \
-#           --name $EKS_CLUSTER_NAME
+    # ---------- LOGIN TO ECR PUBLIC ----------
+    - name: Login to Amazon ECR Public
+      run: |
+        aws ecr-public get-login-password --region us-east-1 \
+        | docker login --username AWS --password-stdin public.ecr.aws
 
-#     - name: Ensure namespace exists
-#       run: |
-#         kubectl create namespace $NAMESPACE \
-#           --dry-run=client -o yaml | kubectl apply -f -
+    # ---------- BUILD & PUSH BACKEND IMAGE ----------
+    - name: Build & Push Backend Image
+      run: |
+        docker build -t three-tier-backend:latest Application-Code/backend
+        docker tag three-tier-backend:latest \
+        public.ecr.aws/u1p9i3k9/three-tier-backend:latest
+        docker push public.ecr.aws/u1p9i3k9/three-tier-backend:latest
 
-#     # ---- External Secrets flow (ONLY THIS IS NEEDED) ----
-#     - name: Apply SecretStore & ExternalSecret
-#       run: |
-#         kubectl apply -f Kubernetes-Manifests-file/Database/secretstore.yaml
-#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
+    # ---------- BUILD & PUSH FRONTEND IMAGE ----------
+    - name: Build & Push Frontend Image
+      run: |
+        docker build -t three-tier-frontend:latest Application-Code/frontend
+        docker tag three-tier-frontend:latest \
+        public.ecr.aws/u1p9i3k9/three-tier-frontend:latest
+        docker push public.ecr.aws/u1p9i3k9/three-tier-frontend:latest
 
-#     # ---- Database ----
-#     - name: Deploy MongoDB
-#       run: |
-#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/
-#         kubectl rollout status deployment/mongodb -n $NAMESPACE
+    # ---------- KUBECONFIG ----------
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig \
+          --region $AWS_REGION \
+          --name $EKS_CLUSTER_NAME
 
-#     # ---- Backend ----
-#     - name: Deploy Backend
-#       run: |
-#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/
-#         kubectl rollout status deployment/backend -n $NAMESPACE
+    # ---------- NAMESPACE ----------
+    - name: Ensure namespace exists
+      run: |
+        kubectl create namespace $NAMESPACE \
+          --dry-run=client -o yaml | kubectl apply -f -
 
-#     # ---- Frontend ----
-#     - name: Deploy Frontend
-#       run: |
-#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/
-#         kubectl rollout status deployment/frontend -n $NAMESPACE
+    # ---------- EXTERNAL SECRETS ----------
+    - name: Apply SecretStore & ExternalSecret
+      run: |
+        kubectl apply -f Kubernetes-Manifests-file/Database/secretstore.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
 
-#     - name: Verify
-#       run: |
-#         kubectl get pods -n $NAMESPACE
+    # ---------- DATABASE ----------
+    - name: Deploy MongoDB
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/
+        kubectl rollout status deployment/mongodb -n $NAMESPACE
+
+    # ---------- BACKEND ----------
+    - name: Deploy Backend
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/
+        kubectl rollout status deployment/api -n $NAMESPACE
+
+    # ---------- FRONTEND ----------
+    - name: Deploy Frontend
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/
+        kubectl rollout status deployment/frontend -n $NAMESPACE
+
+    # ---------- VERIFY ----------
+    - name: Verify
+      run: |
+        kubectl get pods -n $NAMESPACE
