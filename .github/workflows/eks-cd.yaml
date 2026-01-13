@@ -61,10 +61,10 @@ jobs:
         kubectl create namespace $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
-    # ---------- MONGODB SECRET (PLAIN K8S) ----------
+    # ---------- MONGODB SECRET ----------
     - name: Apply MongoDB Secret
       run: |
-        kubectl apply -f Kubernetes-Manifests-file/Database/mongo-secret.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/mongo-secret.yaml
 
     # ---------- DATABASE ----------
     - name: Deploy MongoDB
@@ -84,7 +84,15 @@ jobs:
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/
         kubectl rollout status deployment/frontend -n $NAMESPACE --timeout=180s
 
+    # ---------- INGRESS (ADDED) ----------
+    - name: Deploy Ingress
+      run: |
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/ingress.yaml
+        kubectl get ingress -n $NAMESPACE
+
     # ---------- VERIFY ----------
     - name: Verify
       run: |
         kubectl get pods -n $NAMESPACE
+        kubectl get svc -n $NAMESPACE
+        kubectl get ingress -n $NAMESPACE
