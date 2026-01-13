@@ -67,23 +67,25 @@ jobs:
         kubectl apply -f Kubernetes-Manifests-file/Database/secretstore.yaml
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
 
-    # ---------- DATABASE ----------
+    # ---------- DATABASE (FIXED) ----------
     - name: Deploy MongoDB
       run: |
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/
-        kubectl rollout status deployment/mongodb -n $NAMESPACE
+        echo "Waiting for secrets and PVC..."
+        sleep 30
+        kubectl rollout status deployment/mongodb -n $NAMESPACE --timeout=180s
 
     # ---------- BACKEND ----------
     - name: Deploy Backend
       run: |
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/
-        kubectl rollout status deployment/api -n $NAMESPACE
+        kubectl rollout status deployment/api -n $NAMESPACE --timeout=180s
 
     # ---------- FRONTEND ----------
     - name: Deploy Frontend
       run: |
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/
-        kubectl rollout status deployment/frontend -n $NAMESPACE
+        kubectl rollout status deployment/frontend -n $NAMESPACE --timeout=180s
 
     # ---------- VERIFY ----------
     - name: Verify
