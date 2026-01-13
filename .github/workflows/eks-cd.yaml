@@ -1,65 +1,65 @@
-name: EKS Pipeline
+# name: EKS Pipeline
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-env:
-  AWS_REGION: ap-south-1
-  EKS_CLUSTER_NAME: my-cluster
-  NAMESPACE: three-tier
+# env:
+#   AWS_REGION: ap-south-1
+#   EKS_CLUSTER_NAME: my-cluster
+#   NAMESPACE: three-tier
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+#     - name: Configure AWS credentials
+#       uses: aws-actions/configure-aws-credentials@v4
+#       with:
+#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#         aws-region: ${{ env.AWS_REGION }}
 
-    - name: Update kubeconfig
-      run: |
-        aws eks update-kubeconfig \
-          --region $AWS_REGION \
-          --name $EKS_CLUSTER_NAME
+#     - name: Update kubeconfig
+#       run: |
+#         aws eks update-kubeconfig \
+#           --region $AWS_REGION \
+#           --name $EKS_CLUSTER_NAME
 
-    - name: Ensure namespace exists
-      run: |
-        kubectl create namespace $NAMESPACE \
-          --dry-run=client -o yaml | kubectl apply -f -
+#     - name: Ensure namespace exists
+#       run: |
+#         kubectl create namespace $NAMESPACE \
+#           --dry-run=client -o yaml | kubectl apply -f -
 
-    # ---- External Secrets flow (ONLY THIS IS NEEDED) ----
-    - name: Apply SecretStore & ExternalSecret
-      run: |
-        kubectl apply -f Kubernetes-Manifests-file/Database/secretstore.yaml
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
+#     # ---- External Secrets flow (ONLY THIS IS NEEDED) ----
+#     - name: Apply SecretStore & ExternalSecret
+#       run: |
+#         kubectl apply -f Kubernetes-Manifests-file/Database/secretstore.yaml
+#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
 
-    # ---- Database ----
-    - name: Deploy MongoDB
-      run: |
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/
-        kubectl rollout status deployment/mongodb -n $NAMESPACE
+#     # ---- Database ----
+#     - name: Deploy MongoDB
+#       run: |
+#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/
+#         kubectl rollout status deployment/mongodb -n $NAMESPACE
 
-    # ---- Backend ----
-    - name: Deploy Backend
-      run: |
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/
-        kubectl rollout status deployment/backend -n $NAMESPACE
+#     # ---- Backend ----
+#     - name: Deploy Backend
+#       run: |
+#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/
+#         kubectl rollout status deployment/backend -n $NAMESPACE
 
-    # ---- Frontend ----
-    - name: Deploy Frontend
-      run: |
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/
-        kubectl rollout status deployment/frontend -n $NAMESPACE
+#     # ---- Frontend ----
+#     - name: Deploy Frontend
+#       run: |
+#         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/
+#         kubectl rollout status deployment/frontend -n $NAMESPACE
 
-    - name: Verify
-      run: |
-        kubectl get pods -n $NAMESPACE
+#     - name: Verify
+#       run: |
+#         kubectl get pods -n $NAMESPACE
