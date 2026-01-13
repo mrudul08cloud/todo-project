@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: ap-south-1
   EKS_CLUSTER_NAME: three-tier
   AWS_ROLE_ARN: arn:aws:iam::323001028681:role/Saransh-EKS-OIDC
   NAMESPACE: three-tier
