@@ -61,18 +61,15 @@ jobs:
         kubectl create namespace $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
-    # ---------- EXTERNAL SECRETS ----------
-    - name: Apply SecretStore & ExternalSecret
+    # ---------- MONGODB SECRET (PLAIN K8S) ----------
+    - name: Apply MongoDB Secret
       run: |
-        kubectl apply -f Kubernetes-Manifests-file/Database/secretstore.yaml
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
+        kubectl apply -f Kubernetes-Manifests-file/Database/mongo-secret.yaml
 
-    # ---------- DATABASE (FIXED) ----------
+    # ---------- DATABASE ----------
     - name: Deploy MongoDB
       run: |
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/
-        echo "Waiting for secrets and PVC..."
-        sleep 30
         kubectl rollout status deployment/mongodb -n $NAMESPACE --timeout=180s
 
     # ---------- BACKEND ----------
