@@ -36,13 +36,7 @@ jobs:
         kubectl create namespace $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
-    # ---- FIXED CRDs STEP (THIS SOLVES YOUR ERROR) ----
-    - name: Ensure External Secrets CRDs
-      run: |
-        kubectl apply -f https://raw.githubusercontent.com/external-secrets/external-secrets/v0.9.11/config/crds/bases/external-secrets.io_clustersecretstores.yaml
-        kubectl apply -f https://raw.githubusercontent.com/external-secrets/external-secrets/v0.9.11/config/crds/bases/external-secrets.io_externalsecrets.yaml
-
-    # ---- External Secrets flow ----
+    # ---- External Secrets flow (ONLY THIS IS NEEDED) ----
     - name: Apply SecretStore & ExternalSecret
       run: |
         kubectl apply -f Kubernetes-Manifests-file/Database/secretstore.yaml
