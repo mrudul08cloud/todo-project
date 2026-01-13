@@ -12,15 +12,12 @@ env:
 
 jobs:
   deploy:
-    name: Deploy to EKS
     runs-on: ubuntu-latest
 
     steps:
-    # ---------------- CHECKOUT ----------------
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    # ---------------- AWS AUTH (ACCESS KEY) ----------------
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -28,59 +25,41 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
-    # ---------------- VERIFY AWS ----------------
-    - name: Verify AWS identity
-      run: aws sts get-caller-identity
-
-    # ---------------- KUBECONFIG ----------------
-    - name: Configure kubeconfig
+    - name: Update kubeconfig
       run: |
         aws eks update-kubeconfig \
           --region $AWS_REGION \
-          --name $EKS_CLUSTER_NAME
+          --name my-cluster
 
-    - name: Verify kubectl
-      run: kubectl version --client
-
-    # ---------------- NAMESPACE ----------------
     - name: Ensure namespace exists
       run: |
         kubectl create namespace $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
-    # ---------------- DATABASE PREREQUISITES ----------------
-    - name: Deploy MongoDB prerequisites
+    # ---- External Secrets flow ----
+    - name: Apply SecretStore & ExternalSecret
       run: |
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/serviceaccount.yaml
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/secretstore.yaml --validate=false
         kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/externalsecret.yaml
 
-    # ---------------- DATABASE ----------------
+    # ---- Database ----
     - name: Deploy MongoDB
       run: |
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/pvc.yaml
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/deployment.yaml
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/service.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Database/
         kubectl rollout status deployment/mongodb -n $NAMESPACE
 
-    # ---------------- BACKEND ----------------
+    # ---- Backend ----
     - name: Deploy Backend
       run: |
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/deployment.yaml
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/service.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Backend/
         kubectl rollout status deployment/backend -n $NAMESPACE
 
-    # ---------------- FRONTEND ----------------
+    # ---- Frontend ----
     - name: Deploy Frontend
       run: |
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/deployment.yaml
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/service.yaml
-        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/ingress.yaml
+        kubectl apply -n $NAMESPACE -f Kubernetes-Manifests-file/Frontend/
         kubectl rollout status deployment/frontend -n $NAMESPACE
 
-    # ---------------- VERIFY ----------------
-    - name: Verify cluster resources
+    - name: Verify
       run: |
         kubectl get pods -n $NAMESPACE
-        kubectl get svc -n $NAMESPACE
-        kubectl get ingress -n $NAMESPACE
