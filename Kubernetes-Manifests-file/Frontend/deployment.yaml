@@ -32,3 +32,12 @@ spec:
             value: "http://api:3500/api/tasks"
         ports:
         - containerPort: 80
+
+        # ✅ REQUIRED FOR HPA (ADDED)
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
