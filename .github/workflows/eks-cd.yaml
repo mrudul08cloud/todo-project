@@ -36,10 +36,11 @@ jobs:
         kubectl create namespace $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
-    # ---- IMPORTANT FIX (CRDs) ----
+    # ---- FIXED CRDs STEP (THIS SOLVES YOUR ERROR) ----
     - name: Ensure External Secrets CRDs
       run: |
-        kubectl apply -k https://github.com/external-secrets/external-secrets/config/crds?ref=v0.9.11
+        kubectl apply -f https://raw.githubusercontent.com/external-secrets/external-secrets/v0.9.11/config/crds/bases/external-secrets.io_clustersecretstores.yaml
+        kubectl apply -f https://raw.githubusercontent.com/external-secrets/external-secrets/v0.9.11/config/crds/bases/external-secrets.io_externalsecrets.yaml
 
     # ---- External Secrets flow ----
     - name: Apply SecretStore & ExternalSecret
