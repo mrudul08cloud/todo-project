@@ -36,6 +36,11 @@ jobs:
         kubectl create namespace $NAMESPACE \
           --dry-run=client -o yaml | kubectl apply -f -
 
+    # ---- IMPORTANT FIX (CRDs) ----
+    - name: Ensure External Secrets CRDs
+      run: |
+        kubectl apply -k https://github.com/external-secrets/external-secrets/config/crds?ref=v0.9.11
+
     # ---- External Secrets flow ----
     - name: Apply SecretStore & ExternalSecret
       run: |
