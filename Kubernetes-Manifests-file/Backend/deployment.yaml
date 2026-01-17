@@ -4,7 +4,7 @@ metadata:
   name: api
   namespace: three-tier
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       role: api
@@ -22,3 +22,12 @@ spec:
             value: mongodb://admin:admin123@mongodb-svc:27017/todo?authSource=admin
         ports:
           - containerPort: 3500
+
+        # ✅ REQUIRED FOR HPA (ADDED)
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"

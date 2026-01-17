@@ -25,10 +25,19 @@ spec:
       - name: ecr-registry-secret
       containers:
       - name: frontend
-        image: image: public.ecr.aws/u1p9i3k9/three-tier-frontend:latest
+        image: public.ecr.aws/u1p9i3k9/three-tier-frontend:latest
         imagePullPolicy: Always
         env:
           - name: REACT_APP_BACKEND_URL
             value: "http://api:3500/api/tasks"
         ports:
         - containerPort: 80
+
+        # ✅ REQUIRED FOR HPA (ADDED)
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
